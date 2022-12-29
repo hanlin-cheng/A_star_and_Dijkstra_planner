@@ -196,7 +196,7 @@ nav_msgs::msg::Path NavfnPlanner::createPlan(
     return path;
   }
 
-  // 规划路径入口
+  // 规划路径入口函数
   if (!makePlan(start.pose, goal.pose, tolerance_, path)) {
     throw nav2_core::NoValidPathCouldBeFound(
             "Failed to create plan with tolerance of: " + std::to_string(tolerance_) );
@@ -224,7 +224,8 @@ NavfnPlanner::isPlannerOutOfDate()
   return false;
 }
 
-// 规划路径入口
+// 规划路径入口函数
+// 搜索路径的时候是从目标点网起始点搜索，存储路径的时候是从起始点开始到目标点
 bool
 NavfnPlanner::makePlan(
   const geometry_msgs::msg::Pose & start,
@@ -292,14 +293,15 @@ NavfnPlanner::makePlan(
   bool found_legal = false;
 
   p = goal;
+  // 返回目标点的代价
   double potential = getPointPotential(p.position);
   if (potential < POT_HIGH) {
-    // Goal is reachable by itself
+    // 已经迭代到了目标点
     best_pose = p;
     found_legal = true;
   } else {
     // Goal is not reachable. Trying to find nearest to the goal
-    // reachable point within its tolerance region
+    // 找到目标点附近公差范围内可以达到的点
     double best_sdist = std::numeric_limits<double>::max();
 
     p.position.y = goal.position.y - tolerance;
@@ -320,7 +322,7 @@ NavfnPlanner::makePlan(
   }
 
   if (found_legal) {
-    // extract the plan
+    // 搜索路径
     if (getPlanFromPotential(best_pose, plan)) {
       smoothApproachToGoal(best_pose, plan);
 
@@ -328,6 +330,7 @@ NavfnPlanner::makePlan(
       // previous pose to set the orientation to the 'final approach' orientation of the robot so
       // it does not rotate.
       // And deal with corner case of plan of length 1
+      // 计算搜索出的目的地cell的方向角度
       if (use_final_approach_orientation_) {
         size_t plan_size = plan.poses.size();
         if (plan_size == 1) {
@@ -349,7 +352,8 @@ NavfnPlanner::makePlan(
             nav2_util::geometry_utils::orientationAroundZAxis(theta);
         }
       }
-    } else {
+    } 
+    else { // 搜索路径失败
       RCLCPP_ERROR(
         logger_,
         "Failed to create a plan from potential when a legal"
@@ -383,6 +387,7 @@ NavfnPlanner::smoothApproachToGoal(
   plan.poses.push_back(goal_copy);
 }
 
+// 计算路径
 bool
 NavfnPlanner::getPlanFromPotential(
   const geometry_msgs::msg::Pose & goal,
@@ -408,11 +413,13 @@ NavfnPlanner::getPlanFromPotential(
   const int & max_cycles = (costmap_->getSizeInCellsX() >= costmap_->getSizeInCellsY()) ?
     (costmap_->getSizeInCellsX() * 4) : (costmap_->getSizeInCellsY() * 4);
 
+  // 根据梯度规划路径
   int path_len = planner_->calcPath(max_cycles);
   if (path_len == 0) {
     return false;
   }
 
+  // 输出总cost
   auto cost = planner_->getLastPathCost();
   RCLCPP_DEBUG(
     logger_,
@@ -423,6 +430,7 @@ NavfnPlanner::getPlanFromPotential(
   float * y = planner_->getPathY();
   int len = planner_->getPathLen();
 
+  // 将路径存入容器
   for (int i = len - 1; i >= 0; --i) {
     // convert the plan to world coordinates
     double world_x, world_y;
@@ -442,6 +450,7 @@ NavfnPlanner::getPlanFromPotential(
   return !plan.poses.empty();
 }
 
+// 返回某一个点的代价
 double
 NavfnPlanner::getPointPotential(const geometry_msgs::msg::Point & world_point)
 {

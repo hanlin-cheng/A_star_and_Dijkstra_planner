@@ -768,8 +768,6 @@ float NavFn::getLastPathCost()
 int
 NavFn::calcPath(int n, int * st)
 {
-  // test write
-  // savemap("test");
 
   // check path arrays
   if (npathbuf < n) {
@@ -798,13 +796,15 @@ NavFn::calcPath(int n, int * st)
       std::min(
         nx * ny - 1, stc + static_cast<int>(round(dx)) +
         static_cast<int>(nx * round(dy))));
+    // 靠近起始点，结束循环
     if (potarr[nearest_point] < COST_NEUTRAL) {
       pathx[npath] = static_cast<float>(goal[0]);
       pathy[npath] = static_cast<float>(goal[1]);
-      return ++npath;  // done!
+      return ++npath;  
     }
 
-    if (stc < nx || stc > ns - nx) {  // would be out of bounds
+    // would be out of bounds
+    if (stc < nx || stc > ns - nx) {  
       RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "[PathCalc] Out of bounds");
       return 0;
     }
@@ -814,6 +814,7 @@ NavFn::calcPath(int n, int * st)
     pathy[npath] = stc / nx + dy;
     npath++;
 
+    // 防止搜索出的路径出现振荡
     bool oscillation_detected = false;
     if (npath > 2 &&
       pathx[npath - 1] == pathx[npath - 3] &&
@@ -829,6 +830,7 @@ NavFn::calcPath(int n, int * st)
     int stcpx = stc - nx;
 
     // check for potentials at eight positions near cell
+    // 检查周围的八个点是否有未分配的cell或者轨迹出现振荡情况
     if (potarr[stc] >= POT_HIGH ||
       potarr[stc + 1] >= POT_HIGH ||
       potarr[stc - 1] >= POT_HIGH ||
@@ -845,6 +847,7 @@ NavFn::calcPath(int n, int * st)
         "[Path] Pot fn boundary, following grid (%0.1f/%d)", potarr[stc], npath);
 
       // check eight neighbors to find the lowest
+      // 找出周围八个cell中代价最低的cell
       int minc = stc;
       int minp = potarr[stc];
       int st = stcpx - 1;
@@ -871,12 +874,12 @@ NavFn::calcPath(int n, int * st)
         rclcpp::get_logger("rclcpp"), "[Path] Pot: %0.1f  pos: %0.1f,%0.1f",
         potarr[stc], pathx[npath - 1], pathy[npath - 1]);
 
+      // 未分配，搜路失败
       if (potarr[stc] >= POT_HIGH) {
         RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "[PathCalc] No path found, high potential");
-        // savemap("navfn_highpot");
         return 0;
       }
-    } else {  // have a good gradient here
+    } else {  // 周围的点都有分配代价
       // get grad at four positions near cell
       gradCell(stc);
       gradCell(stc + 1);
@@ -919,20 +922,15 @@ NavFn::calcPath(int n, int * st)
       if (dy > 1.0) {stc += nx; dy -= 1.0;}
       if (dy < -1.0) {stc -= nx; dy += 1.0;}
     }
-
-    //      ROS_INFO("[Path] Pot: %0.1f  grad: %0.1f,%0.1f  pos: %0.1f,%0.1f\n",
-    //      potarr[stc], x, y, pathx[npath-1], pathy[npath-1]);
   }
 
-  //  return npath;  // out of cycles, return failure
   RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "[PathCalc] No path found, path too long");
-  // savemap("navfn_pathlong");
   return 0;  // out of cycles, return failure
 }
 
 
 //
-// gradient calculations
+// 计算梯度
 //
 
 // calculate gradient at a cell
@@ -940,11 +938,13 @@ NavFn::calcPath(int n, int * st)
 float
 NavFn::gradCell(int n)
 {
-  if (gradx[n] + grady[n] > 0.0) {  // check this cell
+  // 检查是否存在梯度
+  if (gradx[n] + grady[n] > 0.0) {  
     return 1.0;
   }
 
-  if (n < nx || n > ns - nx) {  // would be out of bounds
+  // 检查是否越界
+  if (n < nx || n > ns - nx) {  
     return 0.0;
   }
 

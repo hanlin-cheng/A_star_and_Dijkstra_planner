@@ -196,8 +196,8 @@ public:
    */
   void setStart(int * start);
 
-  int goal[2];
-  int start[2];
+  int goal[2]; // 起始点
+  int start[2]; // 目标点
   /**
    * @brief  Initialize cell k with cost v for propagation
    * @param k the cell to initialize
